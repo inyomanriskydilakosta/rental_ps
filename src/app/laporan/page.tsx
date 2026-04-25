@@ -1,0 +1,202 @@
+'use client';
+
+import { useState } from 'react';
+import { Transaction } from '@/types';
+import { transactions } from '@/lib/mockData';
+import { formatCurrency, formatDate, getPSTypeBadgeColor } from '@/lib/utils';
+import {
+  FileText,
+  Download,
+  Search,
+  TrendingUp,
+  Clock,
+  DollarSign,
+  CheckCircle2,
+  AlertCircle,
+  Calendar,
+} from 'lucide-react';
+
+export default function Laporan() {
+  const [data] = useState<Transaction[]>(transactions);
+  const [search, setSearch] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+
+  const filtered = data.filter((t) => {
+    const matchSearch =
+      t.customerName.toLowerCase().includes(search.toLowerCase()) ||
+      t.psName.toLowerCase().includes(search.toLowerCase());
+    const matchDate = !dateFilter || t.date === dateFilter;
+    return matchSearch && matchDate;
+  });
+
+  const totalRevenue = filtered.reduce((s, t) => s + t.amount, 0);
+  const totalDuration = filtered.reduce((s, t) => s + t.duration, 0);
+  const lunas = filtered.filter((t) => t.status === 'LUNAS').length;
+  const belumLunas = filtered.filter((t) => t.status === 'BELUM_LUNAS').length;
+
+  const handleExport = () => {
+    const rows = [
+      ['No', 'Nama', 'HP', 'Jenis PS', 'Unit PS', 'Jam Mulai', 'Jam Selesai', 'Durasi (mnt)', 'Total', 'Status', 'Tanggal'],
+      ...filtered.map((t, i) => [
+        i + 1, t.customerName, t.phone, t.psType, t.psName,
+        t.startTime, t.endTime, t.duration, t.amount, t.status, t.date,
+      ]),
+    ];
+    const csv = rows.map((r) => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'laporan_rental_ps.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Laporan</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Rekap transaksi rental PlayStation</p>
+        </div>
+        <button
+          onClick={handleExport}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-sm shadow-emerald-200"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV
+        </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          {
+            label: 'Total Pendapatan',
+            value: formatCurrency(totalRevenue),
+            icon: DollarSign,
+            bg: 'bg-blue-50',
+            color: 'text-blue-600',
+            sub: `${filtered.length} transaksi`,
+          },
+          {
+            label: 'Total Durasi',
+            value: `${Math.floor(totalDuration / 60)}j ${totalDuration % 60}m`,
+            icon: Clock,
+            bg: 'bg-purple-50',
+            color: 'text-purple-600',
+            sub: 'Jam bermain',
+          },
+          {
+            label: 'Sudah Lunas',
+            value: lunas,
+            icon: CheckCircle2,
+            bg: 'bg-emerald-50',
+            color: 'text-emerald-600',
+            sub: 'Transaksi',
+          },
+          {
+            label: 'Belum Lunas',
+            value: belumLunas,
+            icon: AlertCircle,
+            bg: 'bg-red-50',
+            color: 'text-red-500',
+            sub: 'Perlu konfirmasi',
+          },
+        ].map((card) => (
+          <div key={card.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-9 h-9 ${card.bg} rounded-xl flex items-center justify-center`}>
+                <card.icon className={`w-4.5 h-4.5 ${card.color}`} />
+              </div>
+              <p className="text-sm text-gray-500">{card.label}</p>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{card.value}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{card.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+        {/* Filters */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-50 flex-wrap">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama atau unit PS..."
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            />
+          </div>
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            />
+          </div>
+          <span className="text-xs text-gray-400 ml-auto">{filtered.length} transaksi</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50/80">
+                {['No', 'Nama Pelanggan', 'Unit PS', 'Waktu', 'Durasi', 'Total', 'Status', 'Tanggal'].map((h) => (
+                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtered.map((t, i) => (
+                <tr key={t.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm text-gray-500">{i + 1}</td>
+                  <td className="px-5 py-3.5">
+                    <p className="text-sm font-semibold text-gray-800">{t.customerName}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{t.phone}</p>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <p className="text-sm font-medium text-gray-700">{t.psName}</p>
+                    <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 ${getPSTypeBadgeColor(t.psType)}`}>
+                      {t.psType}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-sm text-gray-700 whitespace-nowrap">
+                    {t.startTime} – {t.endTime}
+                  </td>
+                  <td className="px-5 py-3.5 text-sm text-gray-600">{t.duration} mnt</td>
+                  <td className="px-5 py-3.5 text-sm font-bold text-gray-900">{formatCurrency(t.amount)}</td>
+                  <td className="px-5 py-3.5">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      t.status === 'LUNAS'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-red-50 text-red-600 border border-red-200'
+                    }`}>
+                      {t.status === 'LUNAS' ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                      {t.status === 'LUNAS' ? 'Lunas' : 'Belum Lunas'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">{formatDate(t.date)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Table Footer */}
+        <div className="px-5 py-3.5 border-t border-gray-50 flex items-center justify-between">
+          <p className="text-xs text-gray-400">Menampilkan {filtered.length} dari {data.length} transaksi</p>
+          <p className="text-sm font-bold text-gray-800">
+            Total: <span className="text-blue-700">{formatCurrency(totalRevenue)}</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
