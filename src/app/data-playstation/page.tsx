@@ -116,7 +116,7 @@ export default function DataPlaystation() {
         {/* Table Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-gray-50">
+          <div className="flex flex-col md:flex-row flex-wrap items-start md:items-center gap-3 px-5 py-4 border-b border-gray-50 ">
             <div className="relative flex-1 min-w-0 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -132,11 +132,10 @@ export default function DataPlaystation() {
                 <button
                   key={t}
                   onClick={() => setFilterType(t)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    filterType === t
-                      ? 'bg-blue-700 text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterType === t
+                    ? 'bg-blue-700 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                 >
                   {t === 'ALL' ? 'Semua' : t}
                 </button>
@@ -172,11 +171,10 @@ export default function DataPlaystation() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        unit.status === 'TERSEDIA'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${unit.status === 'TERSEDIA'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${unit.status === 'TERSEDIA' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                         {unit.status}
                       </span>
@@ -214,11 +212,10 @@ export default function DataPlaystation() {
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${getPSTypeBadgeColor(unit.type)}`}>
                           {unit.type}
                         </span>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          unit.status === 'TERSEDIA'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${unit.status === 'TERSEDIA'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${unit.status === 'TERSEDIA' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                           {unit.status}
                         </span>
@@ -286,9 +283,8 @@ export default function DataPlaystation() {
                       key={s}
                       type="button"
                       onClick={() => setForm((p) => ({ ...p, status: s }))}
-                      className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-all ${
-                        form.status === s ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-all ${form.status === s ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
                     >
                       {s}
                     </button>
