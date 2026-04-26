@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { Customer } from '@/types';
 import { customers } from '@/lib/mockData';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Search, UserPlus, Pencil, Trash2, X, Save, User } from 'lucide-react';
+import { Search, UserPlus, Pencil, Trash2, X, Save, User, Users, UserCheck } from 'lucide-react';
+import { usePagination } from '@/hooks/usePagination';
+import Pagination from '@/components/Pagination';
 
 export default function DataPembeli() {
   const [data, setData] = useState<Customer[]>(customers);
@@ -18,6 +20,9 @@ export default function DataPembeli() {
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.phone.includes(search)
   );
+
+  const { paginated, page, pageSize, totalPages, total, startIndex, setPage, setPageSize } =
+    usePagination(filtered, { desktopPageSize: 10, mobilePageSize: 5 });
 
   const handleAdd = () => {
     setEditItem(null);
@@ -62,30 +67,40 @@ export default function DataPembeli() {
     <>
       <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Data Pembeli</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Data Pembeli</h1>
             <p className="text-sm text-gray-400 mt-0.5">Kelola data pelanggan rental PS</p>
           </div>
           <button
             onClick={handleAdd}
-            className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-sm shadow-blue-200"
+            className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-3 sm:px-4 py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-sm shadow-blue-200 flex-shrink-0"
           >
             <UserPlus className="w-4 h-4" />
-            Tambah Pembeli
+            <span className="hidden sm:inline">Tambah Pembeli</span>
+            <span className="sm:hidden">Tambah</span>
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* Stats — 1 col mobile, 3 col sm+ */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {[
-            { label: 'Total Pelanggan', value: data.length, color: 'blue' },
-            { label: 'Member Aktif', value: data.filter((c) => c.memberId).length, color: 'emerald' },
-            { label: 'Non-Member', value: data.filter((c) => !c.memberId).length, color: 'orange' },
+            { label: 'Total Pelanggan', value: data.length, icon: Users, color: 'blue' },
+            { label: 'Member Aktif', value: data.filter((c) => c.memberId).length, icon: UserCheck, color: 'emerald' },
+            { label: 'Non-Member', value: data.filter((c) => !c.memberId).length, icon: User, color: 'orange' },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <p className="text-sm text-gray-500">{stat.label}</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{stat.value}</p>
+            <div key={stat.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                stat.color === 'blue' ? 'bg-blue-50' : stat.color === 'emerald' ? 'bg-emerald-50' : 'bg-orange-50'
+              }`}>
+                <stat.icon className={`w-5 h-5 ${
+                  stat.color === 'blue' ? 'text-blue-600' : stat.color === 'emerald' ? 'text-emerald-600' : 'text-orange-500'
+                }`} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">{stat.label}</p>
+                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -104,10 +119,11 @@ export default function DataPembeli() {
                 className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               />
             </div>
-            <span className="text-xs text-gray-400">{filtered.length} pelanggan</span>
+            <span className="text-xs text-gray-400 flex-shrink-0">{filtered.length} pelanggan</span>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* ── Desktop: Table View ─────────────────────────────── */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50/80">
@@ -119,12 +135,12 @@ export default function DataPembeli() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map((c, i) => (
+                {paginated.map((c, i) => (
                   <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-5 py-3.5 text-sm text-gray-500">{i + 1}</td>
+                    <td className="px-5 py-3.5 text-sm text-gray-500">{startIndex + i + 1}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center flex-shrink-0">
                           <User className="w-4 h-4 text-blue-600" />
                         </div>
                         <span className="text-sm font-semibold text-gray-800">{c.name}</span>
@@ -156,6 +172,57 @@ export default function DataPembeli() {
               </tbody>
             </table>
           </div>
+
+          {/* ── Mobile: Card List View ───────────────────────────── */}
+          <div className="sm:hidden divide-y divide-gray-50">
+            {paginated.map((c, i) => (
+              <div key={c.id} className="p-4 hover:bg-gray-50/40 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  {/* Left */}
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="text-xs text-gray-400 font-medium w-5 flex-shrink-0 pt-0.5">
+                      {startIndex + i + 1}.
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-gray-800">{c.name}</p>
+                        {c.memberId && (
+                          <span className="inline-block text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 px-1.5 py-0.5 rounded">
+                            {c.memberId}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">{c.phone}</p>
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+                        <span>{c.totalSessions} sesi</span>
+                        <span className="font-semibold text-gray-700">{formatCurrency(c.totalSpent)}</span>
+                        <span>{formatDate(c.joinDate)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Right: actions */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button onClick={() => handleEdit(c)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(c.id)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </div>
 

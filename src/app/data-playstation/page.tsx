@@ -5,6 +5,8 @@ import { PlaystationUnit, PSType } from '@/types';
 import { playstationUnits } from '@/lib/mockData';
 import { getPSTypeBadgeColor } from '@/lib/utils';
 import { Gamepad2, Plus, Pencil, Trash2, Search, X, Save } from 'lucide-react';
+import { usePagination } from '@/hooks/usePagination';
+import Pagination from '@/components/Pagination';
 
 const psTypes: PSType[] = ['PS5', 'PS4', 'PS3', 'PS2'];
 
@@ -21,6 +23,9 @@ export default function DataPlaystation() {
     const matchType = filterType === 'ALL' || u.type === filterType;
     return matchSearch && matchType;
   });
+
+  const { paginated, page, pageSize, totalPages, total, startIndex, setPage, setPageSize } =
+    usePagination(filtered, { desktopPageSize: 10, mobilePageSize: 5 });
 
   const handleAdd = () => {
     setEditUnit(null);
@@ -53,28 +58,30 @@ export default function DataPlaystation() {
     <>
       <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Data Playstation</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Data Playstation</h1>
             <p className="text-sm text-gray-400 mt-0.5">Kelola unit PlayStation yang tersedia</p>
           </div>
           <button
             onClick={handleAdd}
-            className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-sm shadow-blue-200"
+            className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-3 sm:px-4 py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-sm shadow-blue-200 flex-shrink-0"
           >
             <Plus className="w-4 h-4" />
-            Tambah PS
+            <span className="hidden sm:inline">Tambah PS</span>
+            <span className="sm:hidden">Tambah</span>
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Stats — 1 col mobile, 2 col sm+ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          {/* Status unit */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-medium text-gray-500">Status Unit</p>
               <Gamepad2 className="w-4 h-4 text-gray-400" />
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-6">
               <div>
                 <p className="text-2xl font-bold text-emerald-600">{countByStatus('TERSEDIA')}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Tersedia</p>
@@ -92,9 +99,10 @@ export default function DataPlaystation() {
             </div>
           </div>
 
+          {/* Per type */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
             <p className="text-sm font-medium text-gray-500 mb-3">Per Jenis</p>
-            <div className="flex gap-4">
+            <div className="flex gap-6">
               {psTypes.map((type) => (
                 <div key={type}>
                   <p className="text-2xl font-bold text-gray-800">{countByType(type)}</p>
@@ -108,8 +116,8 @@ export default function DataPlaystation() {
         {/* Table Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
           {/* Filters */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-50 flex-wrap">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-gray-50">
+            <div className="relative flex-1 min-w-0 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
@@ -119,7 +127,7 @@ export default function DataPlaystation() {
                 className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               />
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-wrap">
               {(['ALL', ...psTypes] as const).map((t) => (
                 <button
                   key={t}
@@ -136,7 +144,8 @@ export default function DataPlaystation() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* ── Desktop: Table View ─────────────────────────────── */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50/80">
@@ -146,12 +155,12 @@ export default function DataPlaystation() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map((unit, i) => (
+                {paginated.map((unit, i) => (
                   <tr key={unit.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-5 py-3.5 text-sm text-gray-500">{i + 1}</td>
+                    <td className="px-5 py-3.5 text-sm text-gray-500">{startIndex + i + 1}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Gamepad2 className="w-4 h-4 text-blue-600" />
                         </div>
                         <span className="text-sm font-semibold text-gray-800">{unit.name}</span>
@@ -187,6 +196,58 @@ export default function DataPlaystation() {
               </tbody>
             </table>
           </div>
+
+          {/* ── Mobile: Card List View ───────────────────────────── */}
+          <div className="sm:hidden divide-y divide-gray-50">
+            {paginated.map((unit, i) => (
+              <div key={unit.id} className="p-4 hover:bg-gray-50/40 transition-colors">
+                <div className="flex items-center justify-between gap-2">
+                  {/* Left */}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-xs text-gray-400 font-medium w-5 flex-shrink-0">{startIndex + i + 1}.</span>
+                    <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Gamepad2 className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{unit.name}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${getPSTypeBadgeColor(unit.type)}`}>
+                          {unit.type}
+                        </span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          unit.status === 'TERSEDIA'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${unit.status === 'TERSEDIA' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                          {unit.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Right: actions */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button onClick={() => handleEdit(unit)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(unit.id)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </div>
 

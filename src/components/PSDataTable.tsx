@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { PlaystationUnit, PSType } from '@/types';
 import { getPSTypeBadgeColor } from '@/lib/utils';
 import { Plus, Pencil, Trash2, Gamepad2, X, Save } from 'lucide-react';
+import { usePagination } from '@/hooks/usePagination';
+import Pagination from '@/components/Pagination';
 
 interface PSDataTableProps {
   units: PlaystationUnit[];
@@ -14,6 +16,9 @@ export default function PSDataTable({ units: initialUnits }: PSDataTableProps) {
   const [showModal, setShowModal] = useState(false);
   const [editUnit, setEditUnit] = useState<PlaystationUnit | null>(null);
   const [form, setForm] = useState({ name: '', type: 'PS5' as PSType });
+
+  const { paginated, page, pageSize, totalPages, total, startIndex, setPage, setPageSize } =
+    usePagination(units, { desktopPageSize: 10, mobilePageSize: 5 });
 
   const handleAdd = () => {
     setEditUnit(null);
@@ -69,12 +74,12 @@ export default function PSDataTable({ units: initialUnits }: PSDataTableProps) {
           </button>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* ── Desktop: Table View ─────────────────────────────── */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50/80">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-8">No</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-10">No</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jenis PS</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -82,9 +87,9 @@ export default function PSDataTable({ units: initialUnits }: PSDataTableProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {units.map((unit, index) => (
+              {paginated.map((unit, index) => (
                 <tr key={unit.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-5 py-3 text-sm text-gray-500">{index + 1}</td>
+                  <td className="px-5 py-3 text-sm text-gray-500">{startIndex + index + 1}</td>
                   <td className="px-4 py-3 text-sm font-semibold text-gray-800">{unit.name}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${getPSTypeBadgeColor(unit.type)}`}>
@@ -92,18 +97,12 @@ export default function PSDataTable({ units: initialUnits }: PSDataTableProps) {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        unit.status === 'TERSEDIA'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          unit.status === 'TERSEDIA' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
-                        }`}
-                      />
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      unit.status === 'TERSEDIA'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${unit.status === 'TERSEDIA' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                       {unit.status}
                     </span>
                   </td>
@@ -128,6 +127,63 @@ export default function PSDataTable({ units: initialUnits }: PSDataTableProps) {
             </tbody>
           </table>
         </div>
+
+        {/* ── Mobile: Card List View ───────────────────────────── */}
+        <div className="sm:hidden divide-y divide-gray-50">
+          {paginated.map((unit, index) => (
+            <div key={unit.id} className="p-4 hover:bg-gray-50/40 transition-colors">
+              <div className="flex items-center justify-between gap-2">
+                {/* Left: number + name + badges */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-xs text-gray-400 font-medium w-5 flex-shrink-0">
+                    {startIndex + index + 1}.
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{unit.name}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${getPSTypeBadgeColor(unit.type)}`}>
+                        {unit.type}
+                      </span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        unit.status === 'TERSEDIA'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${unit.status === 'TERSEDIA' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                        {unit.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {/* Right: action buttons */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => handleEdit(unit)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(unit.id)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Pagination */}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* Modal */}
