@@ -7,6 +7,7 @@ import {
   Users,
   Gamepad2,
   FileText,
+  X,
 } from 'lucide-react';
 
 const navItems = [
@@ -16,21 +17,40 @@ const navItems = [
   { label: 'Laporan', href: '/laporan', icon: FileText },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-52 bg-gradient-to-b from-[#0f2d6b] to-[#0a1f4e] flex flex-col z-30 shadow-2xl">
-      {/* Logo */}
+    <aside
+      className={`fixed left-0 top-0 h-screen w-52 bg-gradient-to-b from-[#0f2d6b] to-[#0a1f4e] flex flex-col z-30 shadow-2xl
+        transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+    >
+      {/* Logo + Mobile Close Button */}
       <div className="px-5 py-5 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20">
-            <Gamepad2 className="w-5 h-5 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+              <Gamepad2 className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-white font-bold text-sm leading-tight">PS CAPT</p>
+              <p className="text-blue-200 text-[9px] leading-tight font-medium">RENTAL PS AMAN DAN CEPAT</p>
+            </div>
           </div>
-          <div>
-            <p className="text-white font-bold text-sm leading-tight">PS CAPT</p>
-            <p className="text-blue-200 text-[9px] leading-tight font-medium">RENTAL PS AMAN DAN CEPAT</p>
-          </div>
+          {/* Close button — only visible on mobile */}
+          <button
+            onClick={onClose}
+            aria-label="Tutup menu"
+            className="lg:hidden w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-white/70 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -47,6 +67,7 @@ export default function Sidebar() {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={onClose}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
                     isActive
                       ? 'bg-white/15 text-white shadow-lg shadow-black/20 border border-white/20'
