@@ -1,21 +1,27 @@
 'use client';
 
-import { useState } from 'react';
-import { Eye, EyeOff, User, Gamepad2 } from 'lucide-react';
+import { useState, useTransition } from 'react';
+import { Eye, EyeOff, Mail, Gamepad2, AlertCircle } from 'lucide-react';
+import { loginAction } from './actions';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
-    // Simulate login delay
-    await new Promise((r) => setTimeout(r, 1200));
-    setIsLoading(false);
-    // TODO: integrate real auth
+    setErrorMsg(null);
+
+    const formData = new FormData(e.currentTarget);
+
+    startTransition(async () => {
+      const result = await loginAction(formData);
+      // loginAction either redirects (success) or returns { error }
+      if (result?.error) {
+        setErrorMsg(result.error);
+      }
+    });
   };
 
   return (
@@ -69,25 +75,33 @@ export default function LoginPage() {
               <p className="form-subtitle">Masuk ke akun admin Anda</p>
             </div>
 
+            {/* Error alert */}
+            {errorMsg && (
+              <div className="error-alert" role="alert">
+                <AlertCircle size={16} />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
             <form onSubmit={handleLogin} className="login-form" noValidate>
-              {/* Username */}
+              {/* Email */}
               <div className="field-wrap">
-                <label htmlFor="username" className="field-label">
-                  Username
+                <label htmlFor="email" className="field-label">
+                  Email
                 </label>
                 <div className="input-wrap">
                   <span className="input-icon">
-                    <User size={18} />
+                    <Mail size={18} />
                   </span>
                   <input
-                    id="username"
-                    type="text"
-                    autoComplete="username"
-                    placeholder="Masukkan username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="Masukkan email"
                     className="login-input"
                     required
+                    disabled={isPending}
                   />
                 </div>
               </div>
@@ -103,13 +117,13 @@ export default function LoginPage() {
                   </span>
                   <input
                     id="password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     placeholder="Masukkan password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
                     className="login-input"
                     required
+                    disabled={isPending}
                   />
                   <button
                     type="button"
@@ -127,10 +141,10 @@ export default function LoginPage() {
               <button
                 id="login-btn"
                 type="submit"
-                className={`login-btn${isLoading ? ' loading' : ''}`}
-                disabled={isLoading}
+                className={`login-btn${isPending ? ' loading' : ''}`}
+                disabled={isPending}
               >
-                {isLoading ? (
+                {isPending ? (
                   <span className="spinner" />
                 ) : (
                   'Login'
@@ -321,6 +335,20 @@ export default function LoginPage() {
           margin: 0;
         }
 
+        /* ── Error alert ────────────────────────────────────── */
+        .error-alert {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: rgba(239,68,68,0.15);
+          border: 1px solid rgba(239,68,68,0.35);
+          border-radius: 10px;
+          padding: 0.75rem 1rem;
+          color: #fca5a5;
+          font-size: 0.85rem;
+          margin-bottom: 1rem;
+        }
+
         /* ── Form elements ──────────────────────────────────── */
         .login-form { display: flex; flex-direction: column; gap: 1.25rem; }
 
@@ -362,6 +390,10 @@ export default function LoginPage() {
           border-color: rgba(96,165,250,0.6);
           background: rgba(255,255,255,0.1);
           box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
+        }
+        .login-input:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         .toggle-pw {
