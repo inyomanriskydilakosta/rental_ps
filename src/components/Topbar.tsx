@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserCircle2, ChevronDown, Bell, Menu } from 'lucide-react';
+import { UserCircle2, Bell, Menu, LogOut } from 'lucide-react';
+import { logoutAction } from '@/app/login/actions';
 
 const navItems = [
   { label: 'Dashboard', href: '/' },
@@ -81,7 +82,7 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
           <div className="hidden sm:block w-px h-8 bg-gray-200" />
 
           {/* Admin Profile */}
-          <button className="flex items-center gap-2 pl-1 pr-2 py-1.5 rounded-xl hover:bg-gray-50 transition-colors group">
+          <div className="flex items-center gap-2 pl-1 pr-2 py-1.5 rounded-xl">
             <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-800 rounded-full flex items-center justify-center flex-shrink-0">
               <UserCircle2 className="w-5 h-5 text-white" />
             </div>
@@ -89,8 +90,19 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
               <p className="text-sm font-semibold text-gray-800 leading-tight">Admin</p>
               <p className="text-[10px] text-gray-400 leading-tight">Petugas Rental</p>
             </div>
-            <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-colors ml-0.5" />
-          </button>
+          </div>
+
+          {/* Logout */}
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              aria-label="Logout"
+              title="Logout"
+              className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </form>
         </div>
       </div>
     </header>
