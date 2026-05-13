@@ -34,14 +34,50 @@ export async function logoutAction() {
 // ── Session management ─────────────────────────────────────────────────────────
 
 /**
- * Price per 30 minutes (in IDR) by PS type.
+ * Rental price calculation by PS type.
+ * Supports packages (1h, 3h, 5h) and half-hour fallback.
  */
-const PRICE_PER_30_MIN: Record<string, number> = {
-  PS5: 10000,
-  PS4: 7500,
-  PS3: 5000,
-  PS2: 3000,
-};
+function calculateRentalPrice(psType: string, durationMinutes: number): number {
+  const packages: Record<string, { hours: number; price: number }[]> = {
+    PS5: [
+      { hours: 5, price: 65000 },
+      { hours: 3, price: 40000 },
+      { hours: 1, price: 15000 },
+      { hours: 0.5, price: 7500 }, // fallback per 30 mins
+    ],
+    PS4: [
+      { hours: 5, price: 45000 },
+      { hours: 3, price: 27000 },
+      { hours: 1, price: 10000 },
+      { hours: 0.5, price: 5000 }, // fallback per 30 mins
+    ],
+    PS3: [
+      { hours: 1, price: 10000 },
+      { hours: 0.5, price: 5000 },
+    ],
+    PS2: [
+      { hours: 1, price: 6000 },
+      { hours: 0.5, price: 3000 },
+    ],
+  };
+
+  const normalizedType = psType.replace(/\s+/g, '').toUpperCase();
+  const psPackages = packages[normalizedType] || packages['PS4']; // fallback to PS4
+
+  let remainingBlocks = Math.ceil(durationMinutes / 30);
+  let totalPrice = 0;
+
+  for (const pkg of psPackages) {
+    const pkgBlocks = pkg.hours * 2;
+    if (remainingBlocks >= pkgBlocks) {
+      const count = Math.floor(remainingBlocks / pkgBlocks);
+      totalPrice += count * pkg.price;
+      remainingBlocks -= count * pkgBlocks;
+    }
+  }
+
+  return totalPrice;
+}
 
 /**
  * Create a new rental session and mark the PS unit as DIGUNAKAN.
@@ -105,8 +141,7 @@ export async function endSession(sessionId: number) {
   if (fetchError || !session) return { error: 'Sesi tidak ditemukan.' };
 
   const duration = calculateDuration(session.start_time, session.end_time);
-  const pricePerHalf = PRICE_PER_30_MIN[session.ps_type] ?? 5000;
-  const amount = Math.ceil(duration / 30) * pricePerHalf;
+  const amount = calculateRentalPrice(session.ps_type, duration);
   const today = new Date().toISOString().split('T')[0];
 
   // Insert transaction
