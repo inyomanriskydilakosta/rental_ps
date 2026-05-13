@@ -84,15 +84,15 @@ function calculateRentalPrice(psType: string, durationMinutes: number): number {
  */
 export async function createSession(formData: FormData) {
   const customerName = (formData.get('customerName') as string)?.trim();
-  const phone = (formData.get('phone') as string)?.trim();
+  const phone = (formData.get('phone') as string)?.trim() || '-';
   const psUnitId = Number(formData.get('psUnitId'));
   const psType = formData.get('psType') as string;
   const psName = (formData.get('psName') as string)?.trim();
   const startTime = formData.get('startTime') as string;
   const endTime = formData.get('endTime') as string;
 
-  if (!customerName || !phone || !psUnitId || !psType || !psName || !startTime || !endTime) {
-    return { error: 'Semua field wajib diisi.' };
+  if (!customerName || !psUnitId || !psType || !psName || !startTime || !endTime) {
+    return { error: 'Semua field wajib diisi kecuali nomor HP.' };
   }
 
   const cookieStore = await cookies();
