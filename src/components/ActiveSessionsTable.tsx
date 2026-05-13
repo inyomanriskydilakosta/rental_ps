@@ -8,12 +8,14 @@ import Link from 'next/link';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 import { endSession } from '@/app/login/actions';
+import { useRouter } from 'next/navigation';
 
 interface ActiveSessionsTableProps {
   sessions: ActiveSession[];
 }
 
 export default function ActiveSessionsTable({ sessions: initialSessions }: ActiveSessionsTableProps) {
+  const router = useRouter();
   const [sessions, setSessions] = useState<ActiveSession[]>(initialSessions);
   const [isPending, startTransition] = useTransition();
   const [endingId, setEndingId] = useState<number | null>(null);
@@ -27,6 +29,7 @@ export default function ActiveSessionsTable({ sessions: initialSessions }: Activ
       const res = await endSession(id);
       if (res?.error) { alert(res.error); setEndingId(null); return; }
       setSessions((prev) => prev.filter((s) => s.id !== id));
+      router.refresh();
       setEndingId(null);
     });
   };

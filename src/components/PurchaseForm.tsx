@@ -4,12 +4,14 @@ import { useState, useTransition } from 'react';
 import { PlaystationUnit, PSType } from '@/types';
 import { UserPlus, Save, Clock, Loader2 } from 'lucide-react';
 import { createSession } from '@/app/login/actions';
+import { useRouter } from 'next/navigation';
 
 interface Props {
   availableUnits: PlaystationUnit[];
 }
 
 export default function PurchaseForm({ availableUnits }: Props) {
+  const router = useRouter();
   const [selectedUnit, setSelectedUnit] = useState<PlaystationUnit | null>(null);
   const [form, setForm] = useState({ customerName: '', phone: '', startTime: '', endTime: '' });
   const [saved, setSaved] = useState(false);
@@ -29,8 +31,8 @@ export default function PurchaseForm({ availableUnits }: Props) {
     e.preventDefault();
     setError('');
 
-    if (!form.customerName.trim() || !form.phone.trim()) {
-      setError('Nama dan nomor HP wajib diisi.');
+    if (!form.customerName.trim()) {
+      setError('Nama pelanggan wajib diisi.');
       return;
     }
     if (!selectedUnit) {
@@ -61,6 +63,7 @@ export default function PurchaseForm({ availableUnits }: Props) {
       setSaved(true);
       setForm({ customerName: '', phone: '', startTime: '', endTime: '' });
       setSelectedUnit(null);
+      router.refresh();
       setTimeout(() => setSaved(false), 2500);
     });
   };
@@ -98,7 +101,7 @@ export default function PurchaseForm({ availableUnits }: Props) {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">No Tlp / Id Member</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">No Tlp / Id Member (Opsional)</label>
             <input
               type="text"
               name="phone"
