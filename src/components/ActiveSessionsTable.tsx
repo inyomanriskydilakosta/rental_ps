@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { ActiveSession } from '@/types';
 import { getPSTypeBadgeColor } from '@/lib/utils';
 import { ChevronRight, Clock, CheckCircle, Loader2 } from 'lucide-react';
@@ -19,6 +19,10 @@ export default function ActiveSessionsTable({ sessions: initialSessions }: Activ
   const [sessions, setSessions] = useState<ActiveSession[]>(initialSessions);
   const [isPending, startTransition] = useTransition();
   const [endingId, setEndingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSessions(initialSessions);
+  }, [initialSessions]);
 
   const { paginated, page, pageSize, totalPages, total, startIndex, setPage, setPageSize } =
     usePagination(sessions, { desktopPageSize: 10, mobilePageSize: 5 });

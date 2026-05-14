@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PlaystationUnit, PSType } from '@/types';
 import { getPSTypeBadgeColor } from '@/lib/utils';
 import { Plus, Pencil, Trash2, Gamepad2, X, Save } from 'lucide-react';
@@ -16,6 +16,10 @@ export default function PSDataTable({ units: initialUnits }: PSDataTableProps) {
   const [showModal, setShowModal] = useState(false);
   const [editUnit, setEditUnit] = useState<PlaystationUnit | null>(null);
   const [form, setForm] = useState({ name: '', type: 'PS5' as PSType });
+
+  useEffect(() => {
+    setUnits(initialUnits);
+  }, [initialUnits]);
 
   const { paginated, page, pageSize, totalPages, total, startIndex, setPage, setPageSize } =
     usePagination(units, { desktopPageSize: 10, mobilePageSize: 5 });

@@ -38,7 +38,7 @@ export default function DataPembeliClient({ customers: initialData }: Props) {
   };
 
   const handleSave = () => {
-    if (!form.name.trim() || !form.phone.trim()) { setError('Nama dan No. HP wajib diisi.'); return; }
+    if (!form.name.trim()) { setError('Nama wajib diisi.'); return; }
     setError('');
     const fd = new FormData();
     fd.set('name', form.name); fd.set('phone', form.phone); fd.set('memberId', form.memberId);
@@ -165,7 +165,7 @@ export default function DataPembeliClient({ customers: initialData }: Props) {
               {[
                 { label: 'Nama Lengkap', key: 'name', placeholder: 'Masukkan nama lengkap' },
                 { label: 'No. HP', key: 'phone', placeholder: 'Contoh: 0812-3456-7890' },
-                { label: 'Member ID (opsional)', key: 'memberId', placeholder: 'Contoh: MBR-007' },
+                { label: 'Member ID', key: 'memberId', placeholder: 'Contoh: MBR-007' },
               ].map((f) => (
                 <div key={f.key}>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">{f.label}</label>
