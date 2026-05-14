@@ -101,7 +101,7 @@ export default function PurchaseForm({ availableUnits }: Props) {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">No Tlp / Id Member (Opsional)</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">No Tlp / Id Member</label>
             <input
               type="text"
               name="phone"
@@ -185,11 +185,10 @@ export default function PurchaseForm({ availableUnits }: Props) {
         <button
           type="submit"
           disabled={isPending}
-          className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-95 disabled:opacity-70 ${
-            saved
+          className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-95 disabled:opacity-70 ${saved
               ? 'bg-emerald-500 text-white'
               : 'bg-blue-700 hover:bg-blue-800 text-white shadow-lg shadow-blue-200'
-          }`}
+            }`}
         >
           {isPending ? (
             <><Loader2 className="w-4 h-4 animate-spin" />Menyimpan...</>

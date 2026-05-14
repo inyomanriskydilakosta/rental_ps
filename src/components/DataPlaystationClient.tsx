@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { PlaystationUnit, PSType } from '@/types';
 import { getPSTypeBadgeColor } from '@/lib/utils';
 import { Gamepad2, Plus, Pencil, Trash2, Search, X, Save, Loader2 } from 'lucide-react';
@@ -21,6 +21,10 @@ export default function DataPlaystationClient({ units: initialUnits }: Props) {
   const [form, setForm] = useState({ name: '', type: 'PS5' as PSType, status: 'TERSEDIA' as 'TERSEDIA' | 'DIGUNAKAN' });
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setUnits(initialUnits);
+  }, [initialUnits]);
 
   const filtered = units.filter((u) => {
     const matchSearch = u.name.toLowerCase().includes(search.toLowerCase());

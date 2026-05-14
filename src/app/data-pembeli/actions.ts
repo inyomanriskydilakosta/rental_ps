@@ -9,7 +9,7 @@ export async function createCustomer(formData: FormData) {
   const phone = (formData.get('phone') as string)?.trim();
   const memberId = (formData.get('memberId') as string)?.trim() || null;
 
-  if (!name || !phone) return { error: 'Nama dan nomor HP wajib diisi.' };
+  if (!name) return { error: 'Nama wajib diisi.' };
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -34,7 +34,7 @@ export async function updateCustomer(id: number, formData: FormData) {
   const phone = (formData.get('phone') as string)?.trim();
   const memberId = (formData.get('memberId') as string)?.trim() || null;
 
-  if (!name || !phone) return { error: 'Nama dan nomor HP wajib diisi.' };
+  if (!name) return { error: 'Nama wajib diisi.' };
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
