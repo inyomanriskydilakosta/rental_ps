@@ -39,7 +39,11 @@ export function getPSTypeBadgeColor(type: PSType): string {
 export function calculateDuration(start: string, end: string): number {
   const [startHour, startMin] = start.split(':').map(Number);
   const [endHour, endMin] = end.split(':').map(Number);
-  return (endHour * 60 + endMin) - (startHour * 60 + startMin);
+  let diff = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+  if (diff < 0) {
+    diff += 24 * 60; // handle crossing midnight into the next day
+  }
+  return diff;
 }
 
 export function getCurrentTime(): string {
