@@ -172,8 +172,8 @@ export default function LaporanClient({ transactions: initialData }: Props) {
 
   const handleExport = () => {
     const rows = [
-      ['No', 'Nama', 'HP', 'Jenis PS', 'Unit PS', 'Jam Mulai', 'Jam Selesai', 'Durasi (mnt)', 'Total', 'Status', 'Tanggal'],
-      ...filtered.map((t, i) => [i + 1, t.customerName, t.phone, t.psType, t.psName, t.startTime, t.endTime, t.duration, t.amount, t.status, t.date]),
+      ['No', 'Nama', 'HP', 'Jenis PS', 'Unit PS', 'Jam Mulai', 'Jam Selesai', 'Durasi (jam)', 'Total', 'Status', 'Tanggal'],
+      ...filtered.map((t, i) => [i + 1, t.customerName, t.phone, t.psType, t.psName, t.startTime, t.endTime, (t.duration / 60), t.amount, t.status, t.date]),
     ];
     const csv = rows.map((r) => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -246,7 +246,7 @@ export default function LaporanClient({ transactions: initialData }: Props) {
                     <td className="px-5 py-3.5"><p className="text-sm font-semibold text-gray-800">{t.customerName}</p><p className="text-xs text-gray-400 mt-0.5">{t.phone}</p></td>
                     <td className="px-5 py-3.5"><p className="text-sm font-medium text-gray-700">{t.psName}</p><span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 ${getPSTypeBadgeColor(t.psType)}`}>{t.psType}</span></td>
                     <td className="px-5 py-3.5 text-sm text-gray-700 whitespace-nowrap">{t.startTime} – {t.endTime}</td>
-                    <td className="px-5 py-3.5 text-sm text-gray-600">{t.duration} mnt</td>
+                    <td className="px-5 py-3.5 text-sm text-gray-600">{(t.duration / 60)} Jam</td>
                     <td className="px-5 py-3.5 text-sm font-bold text-gray-900">{formatCurrency(t.amount)}</td>
                     <td className="px-5 py-3.5">
                       <button
@@ -308,7 +308,7 @@ export default function LaporanClient({ transactions: initialData }: Props) {
                   <div className="flex items-center gap-3 pl-7 flex-wrap">
                     <div className="flex items-center gap-1.5"><span className="text-xs font-medium text-gray-700">{t.psName}</span><span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded ${getPSTypeBadgeColor(t.psType)}`}>{t.psType}</span></div>
                     <span className="text-xs text-gray-500">{t.startTime}–{t.endTime}</span>
-                    <span className="text-xs text-gray-500">{t.duration} mnt</span>
+                    <span className="text-xs text-gray-500">{(t.duration / 60)} Jam</span>
                     <span className="text-sm font-bold text-gray-900 ml-auto">{formatCurrency(t.amount)}</span>
                   </div>
                   <p className="text-xs text-gray-400 pl-7 mt-1">{formatDate(t.date)}</p>
@@ -401,8 +401,8 @@ export default function LaporanClient({ transactions: initialData }: Props) {
 
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Durasi (Menit)</label>
-                  <input type="number" value={editForm.duration} onChange={(e) => setEditForm((p) => ({ ...p, duration: Number(e.target.value) }))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-gray-50 font-semibold text-gray-700" />
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Durasi (Jam)</label>
+                  <input type="number" step="any" value={editForm.duration / 60} onChange={(e) => setEditForm((p) => ({ ...p, duration: Number(e.target.value) * 60 }))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-gray-50 font-semibold text-gray-700" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Total Biaya (Rp)</label>

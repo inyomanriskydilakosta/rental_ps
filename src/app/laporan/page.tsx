@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/utils/supabase/server';
 import { DBTransaction, Transaction } from '@/types';
 import LaporanClient from '@/components/LaporanClient';
+import { calculateDuration } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export default async function LaporanPage() {
     psName: t.ps_name,
     startTime: t.start_time,
     endTime: t.end_time,
-    duration: t.duration,
+    duration: t.duration < 0 ? calculateDuration(t.start_time, t.end_time) : t.duration,
     amount: t.amount,
     date: t.date,
     status: t.status as Transaction['status'],

@@ -11,10 +11,53 @@ interface Props {
   customers?: Customer[];
 }
 
+function getDurationPrice(psType: string, durationMinutes: number): number {
+  const packages: Record<string, { hours: number; price: number }[]> = {
+    PS5: [
+      { hours: 5, price: 65000 },
+      { hours: 3, price: 40000 },
+      { hours: 1, price: 15000 },
+      { hours: 0.5, price: 7500 },
+    ],
+    PS4: [
+      { hours: 5, price: 45000 },
+      { hours: 3, price: 27000 },
+      { hours: 1, price: 10000 },
+      { hours: 0.5, price: 5000 },
+    ],
+    PS3: [
+      { hours: 1, price: 10000 },
+      { hours: 0.5, price: 5000 },
+    ],
+    PS2: [
+      { hours: 1, price: 6000 },
+      { hours: 0.5, price: 3000 },
+    ],
+  };
+
+  const normalizedType = psType.replace(/\s+/g, '').toUpperCase();
+  const psPackages = packages[normalizedType] || packages['PS4'];
+
+  let remainingBlocks = Math.ceil(durationMinutes / 30);
+  let totalPrice = 0;
+
+  for (const pkg of psPackages) {
+    const pkgBlocks = pkg.hours * 2;
+    if (remainingBlocks >= pkgBlocks) {
+      const count = Math.floor(remainingBlocks / pkgBlocks);
+      totalPrice += count * pkg.price;
+      remainingBlocks -= count * pkgBlocks;
+    }
+  }
+
+  return totalPrice;
+}
+
 export default function PurchaseForm({ availableUnits, customers = [] }: Props) {
   const router = useRouter();
   const [selectedUnit, setSelectedUnit] = useState<PlaystationUnit | null>(null);
-  const [form, setForm] = useState({ customerName: '', phone: '', startTime: '', endTime: '' });
+  const [form, setForm] = useState({ customerName: '', phone: '' });
+  const [duration, setDuration] = useState('60'); // default to 60 minutes (1 Jam)
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -66,14 +109,18 @@ export default function PurchaseForm({ availableUnits, customers = [] }: Props) 
       setError('Pilih unit PS terlebih dahulu.');
       return;
     }
-    if (!form.startTime || !form.endTime) {
-      setError('Waktu mulai dan selesai wajib diisi.');
-      return;
-    }
-    if (form.startTime >= form.endTime) {
-      setError('Waktu selesai harus setelah waktu mulai.');
-      return;
-    }
+
+    // Auto-calculate start time and end time based on current time + duration
+    const now = new Date();
+    const startHour = String(now.getHours()).padStart(2, '0');
+    const startMinute = String(now.getMinutes()).padStart(2, '0');
+    const calculatedStartTime = `${startHour}:${startMinute}`;
+
+    const durationMinutes = Number(duration);
+    const end = new Date(now.getTime() + durationMinutes * 60 * 1000);
+    const endHour = String(end.getHours()).padStart(2, '0');
+    const endMinute = String(end.getMinutes()).padStart(2, '0');
+    const calculatedEndTime = `${endHour}:${endMinute}`;
 
     const fd = new FormData();
     fd.set('customerName', form.customerName);
@@ -81,14 +128,15 @@ export default function PurchaseForm({ availableUnits, customers = [] }: Props) 
     fd.set('psUnitId', String(selectedUnit.id));
     fd.set('psType', selectedUnit.type);
     fd.set('psName', selectedUnit.name);
-    fd.set('startTime', form.startTime);
-    fd.set('endTime', form.endTime);
+    fd.set('startTime', calculatedStartTime);
+    fd.set('endTime', calculatedEndTime);
 
     startTransition(async () => {
       const res = await createSession(fd);
       if (res?.error) { setError(res.error); return; }
       setSaved(true);
-      setForm({ customerName: '', phone: '', startTime: '', endTime: '' });
+      setForm({ customerName: '', phone: '' });
+      setDuration('60');
       setSelectedUnit(null);
       router.refresh();
       setTimeout(() => setSaved(false), 2500);
@@ -204,32 +252,35 @@ export default function PurchaseForm({ availableUnits, customers = [] }: Props) 
           )}
         </div>
 
-        {/* Time */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Waktu Mulai</label>
-            <div className="relative">
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <input
-                type="time"
-                name="startTime"
-                value={form.startTime}
-                onChange={handleChange}
-                className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Waktu Selesai</label>
-            <div className="relative">
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <input
-                type="time"
-                name="endTime"
-                value={form.endTime}
-                onChange={handleChange}
-                className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
+        {/* Durasi Bermain */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1.5">Durasi Bermain</label>
+          <div className="relative">
+            <select
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white text-gray-700 font-medium"
+            >
+              {[
+                { label: '1 Jam', value: '60' },
+                { label: '2 Jam', value: '120' },
+                { label: '3 Jam', value: '180' },
+                { label: '4 Jam', value: '240' },
+                { label: '5 Jam', value: '300' },
+              ].map((opt) => {
+                const price = selectedUnit ? getDurationPrice(selectedUnit.type, Number(opt.value)) : null;
+                const priceLabel = price !== null ? ` - Rp ${price.toLocaleString('id-ID')}` : '';
+                return (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}{priceLabel}
+                  </option>
+                );
+              })}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </div>
           </div>
         </div>
