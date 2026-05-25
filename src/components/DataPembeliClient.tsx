@@ -10,6 +10,21 @@ import { createCustomer, updateCustomer, deleteCustomer } from '@/app/data-pembe
 
 interface Props { customers: Customer[]; }
 
+const getNextMemberId = (customers: Customer[]): string => {
+  let maxNum = 0;
+  customers.forEach((c) => {
+    if (c.memberId) {
+      const digits = c.memberId.replace(/\D/g, '');
+      const num = parseInt(digits, 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  });
+  const nextNum = maxNum + 1;
+  return `MBR-${String(nextNum).padStart(3, '0')}`;
+};
+
 export default function DataPembeliClient({ customers: initialData }: Props) {
   const [data, setData] = useState<Customer[]>(initialData);
   const [search, setSearch] = useState('');
@@ -26,7 +41,13 @@ export default function DataPembeliClient({ customers: initialData }: Props) {
   const { paginated, page, pageSize, totalPages, total, startIndex, setPage, setPageSize } =
     usePagination(filtered, { desktopPageSize: 10, mobilePageSize: 5 });
 
-  const openAdd = () => { setEditItem(null); setForm({ name: '', phone: '', memberId: '' }); setError(''); setShowModal(true); };
+  const openAdd = () => {
+    setEditItem(null);
+    const nextId = getNextMemberId(data);
+    setForm({ name: '', phone: '', memberId: nextId });
+    setError('');
+    setShowModal(true);
+  };
   const openEdit = (c: Customer) => { setEditItem(c); setForm({ name: c.name, phone: c.phone, memberId: c.memberId || '' }); setError(''); setShowModal(true); };
 
   const handleDelete = (id: number) => {
@@ -168,8 +189,20 @@ export default function DataPembeliClient({ customers: initialData }: Props) {
                 { label: 'Member ID', key: 'memberId', placeholder: 'Contoh: MBR-007' },
               ].map((f) => (
                 <div key={f.key}>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">{f.label}</label>
-                  <input type="text" value={form[f.key as keyof typeof form]} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-gray-600">{f.label}</label>
+                    {f.key === 'memberId' && !editItem && (
+                      <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={form[f.key as keyof typeof form]}
+                    onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
                 </div>
               ))}
             </div>

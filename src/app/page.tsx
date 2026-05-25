@@ -5,7 +5,7 @@ import StatCard from '@/components/StatCard';
 import ActiveSessionsTable from '@/components/ActiveSessionsTable';
 import PurchaseForm from '@/components/PurchaseForm';
 import PSDataTable from '@/components/PSDataTable';
-import { DBActiveSession, DBPlaystationUnit, ActiveSession, PlaystationUnit } from '@/types';
+import { DBActiveSession, DBPlaystationUnit, DBCustomer, ActiveSession, PlaystationUnit, Customer } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,7 @@ export default async function DashboardPage() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: rawUnits }, { data: rawSessions }, { data: txToday }] = await Promise.all([
+  const [{ data: rawUnits }, { data: rawSessions }, { data: txToday }, { data: rawCustomers }] = await Promise.all([
     supabase.from('playstation_units').select('*').order('id'),
     supabase
       .from('active_sessions')
@@ -24,6 +24,7 @@ export default async function DashboardPage() {
       .from('transactions')
       .select('id')
       .eq('date', new Date().toISOString().split('T')[0]),
+    supabase.from('customers').select('*').order('name'),
   ]);
 
   const units: PlaystationUnit[] = (rawUnits as DBPlaystationUnit[] ?? []).map((u) => ({
@@ -43,6 +44,16 @@ export default async function DashboardPage() {
     startTime: s.start_time,
     endTime: s.end_time,
     status: s.status as ActiveSession['status'],
+  }));
+
+  const customers: Customer[] = (rawCustomers as DBCustomer[] ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    phone: c.phone,
+    memberId: c.member_id ?? undefined,
+    totalSessions: c.total_sessions,
+    totalSpent: c.total_spent,
+    joinDate: c.join_date,
   }));
 
   const availableUnits = units.filter((u) => u.status === 'TERSEDIA');
@@ -116,7 +127,7 @@ export default async function DashboardPage() {
             <ActiveSessionsTable sessions={activeSessions} />
           </div>
           <div className="xl:w-80 flex-shrink-0">
-            <PurchaseForm availableUnits={availableUnits} />
+            <PurchaseForm availableUnits={availableUnits} customers={customers} />
           </div>
         </div>
 

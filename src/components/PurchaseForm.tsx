@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { PlaystationUnit, PSType } from '@/types';
+import { useState, useTransition, useEffect, useRef } from 'react';
+import { PlaystationUnit, PSType, Customer } from '@/types';
 import { UserPlus, Save, Clock, Loader2 } from 'lucide-react';
 import { createSession } from '@/app/login/actions';
 import { useRouter } from 'next/navigation';
 
 interface Props {
   availableUnits: PlaystationUnit[];
+  customers?: Customer[];
 }
 
-export default function PurchaseForm({ availableUnits }: Props) {
+export default function PurchaseForm({ availableUnits, customers = [] }: Props) {
   const router = useRouter();
   const [selectedUnit, setSelectedUnit] = useState<PlaystationUnit | null>(null);
   const [form, setForm] = useState({ customerName: '', phone: '', startTime: '', endTime: '' });
@@ -18,8 +19,34 @@ export default function PurchaseForm({ availableUnits }: Props) {
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
 
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  const suggestions = customers
+    .filter((c) => c.name.toLowerCase().includes(form.customerName.toLowerCase()))
+    .slice(0, 5);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSelectCustomer = (c: Customer) => {
+    setForm((prev) => ({
+      ...prev,
+      customerName: c.name,
+      phone: c.memberId || c.phone,
+    }));
+    setShowSuggestions(false);
   };
 
   const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -89,16 +116,42 @@ export default function PurchaseForm({ availableUnits }: Props) {
 
         {/* Row 1: Name + Phone */}
         <div className="grid grid-cols-2 gap-3">
-          <div>
+          <div className="relative" ref={suggestionsRef}>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nama Pelanggan</label>
             <input
               type="text"
               name="customerName"
               value={form.customerName}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
               placeholder="Masukan nama pelanggan"
               className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-300"
             />
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-50 w-full bg-white border border-gray-100 rounded-xl shadow-xl max-h-48 overflow-y-auto mt-1.5 divide-y divide-gray-50">
+                {suggestions.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleSelectCustomer(c)}
+                    className="w-full text-left px-3 py-2 hover:bg-blue-50/50 transition-colors flex items-center justify-between"
+                  >
+                    <div className="min-w-0 pr-2">
+                      <p className="text-xs font-bold text-gray-800 truncate">{c.name}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5 truncate">{c.phone}</p>
+                    </div>
+                    {c.memberId && (
+                      <span className="text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-100 px-1.5 py-0.5 rounded-md flex-shrink-0">
+                        {c.memberId}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">No Tlp / Id Member</label>
