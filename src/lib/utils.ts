@@ -50,3 +50,28 @@ export function getCurrentTime(): string {
   const now = new Date();
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
+
+export function getWeekRange(dateStr: string): { start: string; end: string } {
+  if (!dateStr) return { start: '', end: '' };
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return { start: '', end: '' };
+  const day = date.getDay(); // 0 is Sunday, 1 is Monday, etc.
+  // We want Monday as start of week.
+  // If Sunday (0), diff to Monday is -6. Otherwise, it is 1 - day.
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  
+  const monday = new Date(date);
+  monday.setDate(date.getDate() + diffToMonday);
+  
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const formatDateStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  
+  return {
+    start: formatDateStr(monday),
+    end: formatDateStr(sunday)
+  };
+}
+
