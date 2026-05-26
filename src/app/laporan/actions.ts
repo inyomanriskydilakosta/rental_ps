@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/utils/supabase/server';
+import { syncCustomerStats } from '@/utils/customerSync';
 
 export async function updateTransactionStatus(
   id: number,
@@ -40,6 +41,13 @@ export async function updateTransaction(
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
+  // 1. Fetch old transaction data to sync old customer
+  const { data: oldTx } = await supabase
+    .from('transactions')
+    .select('customer_name, phone')
+    .eq('id', id)
+    .single();
+
   const { error } = await supabase
     .from('transactions')
     .update({
@@ -58,14 +66,29 @@ export async function updateTransaction(
 
   if (error) return { error: error.message };
 
+  // 2. Sync old customer (in case of name/phone changes)
+  if (oldTx) {
+    await syncCustomerStats(supabase, oldTx.customer_name, oldTx.phone);
+  }
+  // 3. Sync new customer (in case details changed)
+  await syncCustomerStats(supabase, data.customerName, data.phone);
+
   revalidatePath('/');
   revalidatePath('/laporan');
+  revalidatePath('/data-pembeli');
   return { success: true };
 }
 
 export async function deleteTransaction(id: number) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
+
+  // 1. Fetch old transaction data before delete
+  const { data: oldTx } = await supabase
+    .from('transactions')
+    .select('customer_name, phone')
+    .eq('id', id)
+    .single();
 
   const { error } = await supabase
     .from('transactions')
@@ -74,8 +97,14 @@ export async function deleteTransaction(id: number) {
 
   if (error) return { error: error.message };
 
+  // 2. Sync customer stats
+  if (oldTx) {
+    await syncCustomerStats(supabase, oldTx.customer_name, oldTx.phone);
+  }
+
   revalidatePath('/');
   revalidatePath('/laporan');
+  revalidatePath('/data-pembeli');
   return { success: true };
 }
 

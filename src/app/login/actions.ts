@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/utils/supabase/server';
 import { calculateDuration } from '@/lib/utils';
+import { syncCustomerStats } from '@/utils/customerSync';
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
 
@@ -159,6 +160,9 @@ export async function endSession(sessionId: number) {
   });
 
   if (txError) return { error: txError.message };
+
+  // Recalculate and sync customer stats
+  await syncCustomerStats(supabase, session.customer_name, session.phone);
 
   // Mark session SELESAI
   const { error: sessionUpdateError } = await supabase
