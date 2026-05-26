@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { Transaction, PSType } from '@/types';
-import { formatCurrency, formatDate, getPSTypeBadgeColor, calculateDuration } from '@/lib/utils';
+import { formatCurrency, formatDate, getPSTypeBadgeColor, calculateDuration, getWeekRange } from '@/lib/utils';
 import { Download, Search, Clock, DollarSign, CheckCircle2, AlertCircle, Calendar, Loader2, Pencil, Trash2, X, Save } from 'lucide-react';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
@@ -56,7 +56,29 @@ function estimateRentalPrice(psType: string, durationMinutes: number): number {
 export default function LaporanClient({ transactions: initialData }: Props) {
   const [data, setData] = useState<Transaction[]>(initialData);
   const [search, setSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
+
+  // Filter States
+  const [filterType, setFilterType] = useState<'ALL' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'>('ALL');
+
+  // Initialize with local dates
+  const getLocalDateString = (d: Date = new Date()) => {
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
+  };
+
+  const getLocalMonthString = (d: Date = new Date()) => {
+    return getLocalDateString(d).substring(0, 7);
+  };
+
+  const getLocalYearString = (d: Date = new Date()) => {
+    return getLocalDateString(d).substring(0, 4);
+  };
+
+  const [dailyDate, setDailyDate] = useState(getLocalDateString());
+  const [weeklyDate, setWeeklyDate] = useState(getLocalDateString());
+  const [monthlyMonth, setMonthlyMonth] = useState(getLocalMonthString());
+  const [yearlyYear, setYearlyYear] = useState(getLocalYearString());
+
   const [isPending, startTransition] = useTransition();
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
@@ -82,13 +104,67 @@ export default function LaporanClient({ transactions: initialData }: Props) {
   });
   const [editError, setEditError] = useState('');
 
+  // Export States
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportPeriodType, setExportPeriodType] = useState<'ALL' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'FILTERED'>('ALL');
+  const [exportDailyDate, setExportDailyDate] = useState(getLocalDateString());
+  const [exportWeeklyDate, setExportWeeklyDate] = useState(getLocalDateString());
+  const [exportMonthlyMonth, setExportMonthlyMonth] = useState(getLocalMonthString());
+  const [exportYearlyYear, setExportYearlyYear] = useState(getLocalYearString());
+
+  const openExportModal = () => {
+    setExportPeriodType(filterType === 'ALL' ? 'ALL' : filterType);
+    setExportDailyDate(dailyDate);
+    setExportWeeklyDate(weeklyDate);
+    setExportMonthlyMonth(monthlyMonth);
+    setExportYearlyYear(yearlyYear);
+    setShowExportModal(true);
+  };
+
+  const getExportCount = () => {
+    if (exportPeriodType === 'ALL') return data.length;
+    if (exportPeriodType === 'FILTERED') return filtered.length;
+    if (exportPeriodType === 'DAILY') return data.filter((t) => t.date === exportDailyDate).length;
+    if (exportPeriodType === 'WEEKLY') {
+      const { start, end } = getWeekRange(exportWeeklyDate);
+      return data.filter((t) => t.date >= start && t.date <= end).length;
+    }
+    if (exportPeriodType === 'MONTHLY') return data.filter((t) => t.date.substring(0, 7) === exportMonthlyMonth).length;
+    if (exportPeriodType === 'YEARLY') return data.filter((t) => t.date.substring(0, 4) === exportYearlyYear).length;
+    return 0;
+  };
+
+
   const filtered = data.filter((t) => {
     const matchSearch =
       t.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      t.psName.toLowerCase().includes(search.toLowerCase());
-    const matchDate = !dateFilter || t.date === dateFilter;
-    return matchSearch && matchDate;
+      t.psName.toLowerCase().includes(search.toLowerCase()) ||
+      (t.phone && t.phone.toLowerCase().includes(search.toLowerCase()));
+
+    let matchPeriod = true;
+    if (filterType === 'DAILY') {
+      matchPeriod = t.date === dailyDate;
+    } else if (filterType === 'WEEKLY') {
+      const { start, end } = getWeekRange(weeklyDate);
+      matchPeriod = t.date >= start && t.date <= end;
+    } else if (filterType === 'MONTHLY') {
+      matchPeriod = t.date.substring(0, 7) === monthlyMonth;
+    } else if (filterType === 'YEARLY') {
+      matchPeriod = t.date.substring(0, 4) === yearlyYear;
+    }
+
+    return matchSearch && matchPeriod;
   });
+
+  // Unique years option from all transactions for the select dropdown
+  const availableYears = Array.from(new Set(
+    data.map(t => t.date ? t.date.substring(0, 4) : new Date().getFullYear().toString())
+  )).sort((a, b) => b.localeCompare(a));
+
+  const currentYear = new Date().getFullYear().toString();
+  if (!availableYears.includes(currentYear)) {
+    availableYears.unshift(currentYear);
+  }
 
   const { paginated, page, pageSize, totalPages, total, startIndex, setPage, setPageSize } =
     usePagination(filtered, { desktopPageSize: 10, mobilePageSize: 5 });
@@ -170,18 +246,71 @@ export default function LaporanClient({ transactions: initialData }: Props) {
     });
   };
 
-  const handleExport = () => {
+  const handleExportCSV = () => {
+    let exportData: Transaction[] = [];
+    let filename = 'laporan_rental_ps';
+
+    if (exportPeriodType === 'ALL') {
+      exportData = data;
+      filename += '_semua';
+    } else if (exportPeriodType === 'FILTERED') {
+      exportData = filtered;
+      filename += '_filtered';
+    } else if (exportPeriodType === 'DAILY') {
+      exportData = data.filter((t) => t.date === exportDailyDate);
+      filename += `_harian_${exportDailyDate}`;
+    } else if (exportPeriodType === 'WEEKLY') {
+      const { start, end } = getWeekRange(exportWeeklyDate);
+      exportData = data.filter((t) => t.date >= start && t.date <= end);
+      filename += `_mingguan_${start}_to_${end}`;
+    } else if (exportPeriodType === 'MONTHLY') {
+      exportData = data.filter((t) => t.date.substring(0, 7) === exportMonthlyMonth);
+      filename += `_bulanan_${exportMonthlyMonth}`;
+    } else if (exportPeriodType === 'YEARLY') {
+      exportData = data.filter((t) => t.date.substring(0, 4) === exportYearlyYear);
+      filename += `_tahunan_${exportYearlyYear}`;
+    }
+
+    if (exportData.length === 0) {
+      alert('Tidak ada transaksi pada periode yang dipilih untuk diekspor.');
+      return;
+    }
+
     const rows = [
-      ['No', 'Nama', 'HP', 'Jenis PS', 'Unit PS', 'Jam Mulai', 'Jam Selesai', 'Durasi (jam)', 'Total', 'Status', 'Tanggal'],
-      ...filtered.map((t, i) => [i + 1, t.customerName, t.phone, t.psType, t.psName, t.startTime, t.endTime, (t.duration / 60), t.amount, t.status, t.date]),
+      ['No', 'Nama Pelanggan', 'No HP', 'Jenis PS', 'Unit PS', 'Waktu Mulai', 'Waktu Selesai', 'Durasi (jam)', 'Total Biaya', 'Status Pembayaran', 'Tanggal'],
+      ...exportData.map((t, i) => [
+        i + 1,
+        t.customerName,
+        t.phone || '-',
+        t.psType,
+        t.psName,
+        t.startTime,
+        t.endTime,
+        (t.duration / 60).toFixed(2),
+        t.amount,
+        t.status === 'LUNAS' ? 'Lunas' : 'Belum Lunas',
+        t.date
+      ]),
     ];
-    const csv = rows.map((r) => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+
+    const csvContent = '\uFEFF' + rows.map((r) => r.map(val => {
+      const stringVal = String(val);
+      if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n')) {
+        return `"${stringVal.replace(/"/g, '""')}"`;
+      }
+      return stringVal;
+    }).join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'laporan_rental_ps.csv'; a.click();
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.click();
     URL.revokeObjectURL(url);
+    setShowExportModal(false);
   };
+
 
   return (
     <>
@@ -191,7 +320,7 @@ export default function LaporanClient({ transactions: initialData }: Props) {
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Laporan</h1>
             <p className="text-sm text-gray-400 mt-0.5">Rekap transaksi rental PlayStation</p>
           </div>
-          <button onClick={handleExport} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-3 sm:px-4 py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-sm shadow-emerald-200 flex-shrink-0">
+          <button onClick={openExportModal} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-3 sm:px-4 py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-sm shadow-emerald-200 flex-shrink-0">
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Export CSV</span>
             <span className="sm:hidden">Export</span>
@@ -221,17 +350,115 @@ export default function LaporanClient({ transactions: initialData }: Props) {
 
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-gray-50">
-            <div className="relative flex-1 min-w-0 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari nama atau unit PS..." className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+          {/* Filter Periode & Search */}
+          <div className="px-5 py-4 border-b border-gray-50 space-y-4">
+            {/* Tipe Filter Pill Tabs */}
+            <div className="flex flex-wrap items-center gap-1.5 bg-gray-50 p-1 rounded-xl w-fit border border-gray-100/80">
+              {[
+                { id: 'ALL', label: 'Semua' },
+                { id: 'DAILY', label: 'Harian' },
+                { id: 'WEEKLY', label: 'Mingguan' },
+                { id: 'MONTHLY', label: 'Bulanan' },
+                { id: 'YEARLY', label: 'Tahunan' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setFilterType(tab.id as any)}
+                  className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 active:scale-95 ${filterType === tab.id
+                      ? 'bg-blue-700 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/60'
+                    }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+
+            {/* Input Kontrol */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-0 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari nama, unit PS, atau nomor HP..."
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
+                />
+              </div>
+
+              {/* Dynamic Picker Inputs */}
+              {filterType === 'DAILY' && (
+                <div className="relative flex items-center">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="date"
+                    value={dailyDate}
+                    onChange={(e) => setDailyDate(e.target.value)}
+                    className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white font-medium text-gray-700"
+                  />
+                </div>
+              )}
+
+              {filterType === 'WEEKLY' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative flex items-center">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="date"
+                      value={weeklyDate}
+                      onChange={(e) => setWeeklyDate(e.target.value)}
+                      className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white font-medium text-gray-700"
+                    />
+                  </div>
+                  {weeklyDate && (
+                    <div className="text-xs font-semibold text-blue-700 bg-blue-50/80 px-3 py-2 rounded-xl border border-blue-100">
+                      Rentang: {formatDate(getWeekRange(weeklyDate).start)} – {formatDate(getWeekRange(weeklyDate).end)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {filterType === 'MONTHLY' && (
+                <div className="relative flex items-center">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="month"
+                    value={monthlyMonth}
+                    onChange={(e) => setMonthlyMonth(e.target.value)}
+                    className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white font-medium text-gray-700"
+                  />
+                </div>
+              )}
+
+              {filterType === 'YEARLY' && (
+                <div className="relative flex items-center">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <select
+                    value={yearlyYear}
+                    onChange={(e) => setYearlyYear(e.target.value)}
+                    className="pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white font-medium text-gray-700 appearance-none min-w-[100px]"
+                  >
+                    {availableYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+
+              <span className="text-xs text-gray-400 ml-auto flex-shrink-0 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-lg">
+                {filtered.length} transaksi
+              </span>
             </div>
-            <span className="text-xs text-gray-400 ml-auto flex-shrink-0">{filtered.length} transaksi</span>
           </div>
+
 
           {/* Desktop */}
           <div className="hidden sm:block overflow-x-auto">
@@ -335,7 +562,7 @@ export default function LaporanClient({ transactions: initialData }: Props) {
             </div>
             <div className="p-5 space-y-4">
               {editError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg border border-red-100">{editError}</p>}
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nama Pelanggan</label>
@@ -413,12 +640,169 @@ export default function LaporanClient({ transactions: initialData }: Props) {
                 * Durasi dan Total Biaya otomatis terhitung jika Waktu Mulai/Selesai/Jenis PS diubah, tapi Anda tetap dapat menyesuaikannya secara manual.
               </p>
             </div>
-            
+
             <div className="flex gap-2.5 px-5 pb-5 pt-3 border-t border-gray-100">
               <button onClick={() => setShowEditModal(false)} className="flex-1 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">Batal</button>
               <button onClick={handleSaveEdit} disabled={isPending} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold bg-blue-700 text-white rounded-xl hover:bg-blue-800 transition-colors disabled:opacity-70">
                 {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 {isPending ? 'Menyimpan...' : 'Simpan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Period Selection Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                  <Download className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-800 text-sm sm:text-base leading-tight">Export Laporan CSV</h3>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Pilih rentang waktu data yang diekspor</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4">
+              {/* Export Period Type */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
+                  Pilih Tipe Periode
+                </label>
+                <div className="relative">
+                  <select
+                    value={exportPeriodType}
+                    onChange={(e) => setExportPeriodType(e.target.value as any)}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-white font-medium text-gray-700"
+                  >
+                    <option value="ALL">Semua Transaksi</option>
+                    <option value="DAILY">Harian</option>
+                    <option value="WEEKLY">Mingguan</option>
+                    <option value="MONTHLY">Bulanan</option>
+                    <option value="YEARLY">Tahunan</option>
+                    <option value="FILTERED">Sesuai Filter Tabel Saat Ini</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dynamic Pickers based on Period Type */}
+              {exportPeriodType === 'DAILY' && (
+                <div className="space-y-1.5 animate-in slide-in-from-top-1 duration-200">
+                  <label className="block text-xs font-semibold text-gray-600">Pilih Tanggal</label>
+                  <div className="relative flex items-center">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="date"
+                      value={exportDailyDate}
+                      onChange={(e) => setExportDailyDate(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white font-medium text-gray-700"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {exportPeriodType === 'WEEKLY' && (
+                <div className="space-y-2 animate-in slide-in-from-top-1 duration-200">
+                  <label className="block text-xs font-semibold text-gray-600">Pilih Minggu</label>
+                  <div className="relative flex items-center">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="date"
+                      value={exportWeeklyDate}
+                      onChange={(e) => setExportWeeklyDate(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white font-medium text-gray-700"
+                    />
+                  </div>
+                  {exportWeeklyDate && (
+                    <div className="text-xs font-semibold text-blue-700 bg-blue-50/80 px-3 py-2.5 rounded-xl border border-blue-100">
+                      Rentang Ekspor: {formatDate(getWeekRange(exportWeeklyDate).start)} – {formatDate(getWeekRange(exportWeeklyDate).end)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {exportPeriodType === 'MONTHLY' && (
+                <div className="space-y-1.5 animate-in slide-in-from-top-1 duration-200">
+                  <label className="block text-xs font-semibold text-gray-600">Pilih Bulan</label>
+                  <div className="relative flex items-center">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="month"
+                      value={exportMonthlyMonth}
+                      onChange={(e) => setExportMonthlyMonth(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white font-medium text-gray-700"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {exportPeriodType === 'YEARLY' && (
+                <div className="space-y-1.5 animate-in slide-in-from-top-1 duration-200">
+                  <label className="block text-xs font-semibold text-gray-600">Pilih Tahun</label>
+                  <div className="relative flex items-center">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <select
+                      value={exportYearlyYear}
+                      onChange={(e) => setExportYearlyYear(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white font-medium text-gray-700 appearance-none"
+                    >
+                      {availableYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Data Count Indicator */}
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5 flex items-center justify-between text-xs sm:text-sm">
+                <span className="text-gray-500">Jumlah transaksi terdeteksi:</span>
+                <span className="font-bold text-gray-900 bg-white border border-gray-200/80 px-2.5 py-1 rounded-lg">
+                  {getExportCount()} transaksi
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex gap-2.5 px-5 pb-5 pt-3 border-t border-gray-100 bg-gray-50/50">
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="flex-1 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors bg-white active:scale-95"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleExportCSV}
+                disabled={getExportCount() === 0}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all active:scale-95 shadow-sm shadow-emerald-200 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <Download className="w-4 h-4" />
+                Unduh CSV
               </button>
             </div>
           </div>
